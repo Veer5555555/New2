@@ -1,93 +1,94 @@
-
-import streamlit as st
-import pandas as pd
 import yfinance as yf
-import numpy as np
-from ta.trend import MACD, EMAIndicator
-from ta.momentum import RSIIndicator
+import pandas as pd
+import streamlit as st
 import datetime
 
-# -------------------------- Settings --------------------------
 st.set_page_config(layout="wide")
 st.title("📈 NSE Stock Breakout Dashboard")
 
-symbols = [ "INFY.NS", "WIPRO.NS", "TCS.NS", "SBIN.NS", "LICI.NS",
-    "ADANIPORTS.NS", "TATAMOTORS.NS", "TATASTEEL.NS", "HAL.NS", "IRCTC.NS",
-    "IOC.NS", "COALINDIA.NS", "HINDUNILVR.NS", "PNB.NS", "RELIANCE.NS",
-    "ITC.NS", "VEDL.NS", "JSWSTEEL.NS", "NTPC.NS", "POWERGRID.NS",
-    "BPCL.NS", "ONGC.NS", "NHPC.NS", "ADANIGREEN.NS", "GAIL.NS", "TECHM.NS",
-    "HCLTECH.NS", "CIPLA.NS", "DIVISLAB.NS", "SUNPHARMA.NS", "BAJAJFINSV.NS",
-    "BAJFINANCE.NS", "MARUTI.NS", "EICHERMOT.NS", "M&M.NS", "HDFCBANK.NS",
-    "ICICIBANK.NS", "AXISBANK.NS", "BANKBARODA.NS", "INDUSINDBK.NS", "IDFCFIRSTB.NS",
-    "FEDERALBNK.NS", "CANBK.NS", "UNIONBANK.NS", "NAUKRI.NS", "PAYTM.NS",
-    "ZOMATO.NS", "DELHIVERY.NS", "TATAPOWER.NS", "UPL.NS", "LT.NS",
-    "SBICARD.NS", "INDIGO.NS", "BHARTIARTL.NS", "IDEA.NS", "BEL.NS",
-    "TITAN.NS", "DMART.NS", "ASIANPAINT.NS", "DIXON.NS", "ABB.NS",
-    "BHEL.NS", "IRFC.NS", "RVNL.NS", "PFC.NS", "RECLTD.NS", "SJVN.NS",
-    "HFCL.NS", "TATACHEM.NS", "HDFCLIFE.NS", "ICICIPRULI.NS", "ICICIGI.NS",
-    "SBILIFE.NS", "HDFCAMC.NS", "CHOLAFIN.NS", "MUTHOOTFIN.NS", "LTIM.NS",
-    "PERSISTENT.NS", "COFORGE.NS", "NESTLEIND.NS", "COLPAL.NS", "GODREJCP.NS",
-    "MARICO.NS", "BRITANNIA.NS", "HAVELLS.NS", "BLUEDART.NS", "DRREDDY.NS",
-    "AUROPHARMA.NS", "GLAND.NS", "LUPIN.NS", "BIOCON.NS", "BOSCHLTD.NS",
-    "ESCORTS.NS", "ASHOKLEY.NS", "TIINDIA.NS", "SRF.NS", "DEEPAKNTR.NS",
-    "PIIND.NS", "ASTRAL.NS", "TATVA.NS", "ADANIENT.NS", "VBL.NS", "SIEMENS.NS",
-    "KPRMILL.NS", "AIAENG.NS", "POLYCAB.NS", "INDUSTOWER.NS", "KALYANKJIL.NS"
+stock_list = [
+    'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'KOTAKBANK.NS', 'LT.NS', 'HINDUNILVR.NS',
+    'SBIN.NS', 'BHARTIARTL.NS', 'ASIANPAINT.NS', 'AXISBANK.NS', 'MARUTI.NS', 'WIPRO.NS', 'SUNPHARMA.NS', 'ITC.NS',
+    'TECHM.NS', 'POWERGRID.NS', 'TATAMOTORS.NS', 'TATASTEEL.NS', 'HCLTECH.NS', 'ULTRACEMCO.NS', 'NTPC.NS',
+    'GRASIM.NS', 'NESTLEIND.NS', 'ADANIPORTS.NS', 'CIPLA.NS', 'BAJAJ-AUTO.NS', 'COALINDIA.NS', 'JSWSTEEL.NS',
+    'BPCL.NS', 'EICHERMOT.NS', 'HEROMOTOCO.NS', 'INDUSINDBK.NS', 'IOC.NS', 'M&M.NS', 'ONGC.NS', 'SHREECEM.NS',
+    'TITAN.NS', 'UPL.NS', 'DIVISLAB.NS', 'HDFCLIFE.NS', 'BAJFINANCE.NS', 'BAJAJFINSV.NS', 'HAVELLS.NS',
+    'PIDILITIND.NS', 'DMART.NS', 'GODREJCP.NS', 'ICICIGI.NS', 'ICICIPRULI.NS', 'PEL.NS', 'SBILIFE.NS', 'SIEMENS.NS',
+    'SRF.NS', 'TORNTPHARM.NS', 'VEDL.NS', 'VOLTAS.NS', 'ZEEL.NS', 'LICI.NS', 'IRCTC.NS', 'HAL.NS', 'BLUEDART.NS',
+    'BANKBARODA.NS', 'BANKINDIA.NS', 'UNIONBANK.NS', 'IDFCFIRSTB.NS', 'PNB.NS', 'FEDERALBNK.NS', 'CANBK.NS',
+    'IEX.NS', 'INDIGO.NS', 'RVNL.NS', 'PERSISTENT.NS', 'TATAELXSI.NS', 'BOSCHLTD.NS'
 ]
 
-# -------------------------- Utility Functions --------------------------
-@st.cache_data(ttl=3600)
-def fetch_data(symbol):
+def fetch_stock_data(symbol):
     try:
-        df = yf.download(symbol, period="3mo", interval="1d", progress=False)
+        end = datetime.datetime.now()
+        start = end - datetime.timedelta(days=90)
+        df = yf.download(symbol, start=start, end=end)
         if df.empty:
             return None
-        df.dropna(inplace=True)
-        df["EMA20"] = EMAIndicator(df["Close"], window=20).ema_indicator()
-        df["EMA50"] = EMAIndicator(df["Close"], window=50).ema_indicator()
-        df["EMA100"] = EMAIndicator(df["Close"], window=100).ema_indicator()
-        df["RSI"] = RSIIndicator(df["Close"], window=14).rsi()
-        macd = MACD(df["Close"])
-        df["MACD"] = macd.macd()
-        df["Signal"] = macd.macd_signal()
-        df["MACD_Diff"] = macd.macd_diff()
-        df["Gann_Level"] = round((df["High"] * df["Low"])**0.5, 2)
-        df["Bullish"] = (df["Close"] > df["EMA20"]) & (df["RSI"] > 50) & (df["MACD_Diff"] > 0)
-        df["Bearish"] = (df["Close"] < df["EMA20"]) & (df["RSI"] < 50) & (df["MACD_Diff"] < 0)
-        df["Target 1"] = round(df["Close"] * 1.02, 2)
-        df["Target 2"] = round(df["Close"] * 1.04, 2)
-        df["Target 3"] = round(df["Close"] * 1.06, 2)
-        df["Stop Loss"] = round(df["Close"] * 0.97, 2)
-        return df
+
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
+        df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
+        df['RSI'] = compute_rsi(df['Close'])
+        df['MACD'], df['Signal'] = compute_macd(df['Close'])
+        df['MACD_diff'] = df['MACD'] - df['Signal']
+
+        # Breakout Detection
+        df['Breakout'] = df['Close'] > df['Close'].rolling(window=20).max().shift(1)
+        breakout = df['Breakout'].iloc[-1]
+
+        sentiment = 'Bullish' if df['EMA20'].iloc[-1] > df['EMA50'].iloc[-1] and df['MACD_diff'].iloc[-1] > 0 else 'Bearish'
+
+        # Target & SL logic
+        close_price = df['Close'].iloc[-1]
+        target1 = round(close_price * 1.02, 2)
+        target2 = round(close_price * 1.04, 2)
+        target3 = round(close_price * 1.06, 2)
+        stop_loss = round(close_price * 0.98, 2)
+
+        return {
+            'Symbol': symbol,
+            'Close': round(close_price, 2),
+            'EMA20': round(df['EMA20'].iloc[-1], 2),
+            'EMA50': round(df['EMA50'].iloc[-1], 2),
+            'RSI': round(df['RSI'].iloc[-1], 2),
+            'MACD': round(df['MACD'].iloc[-1], 2),
+            'Signal': round(df['Signal'].iloc[-1], 2),
+            'MACD_diff': round(df['MACD_diff'].iloc[-1], 2),
+            'Breakout': breakout,
+            'Sentiment': sentiment,
+            'Target 1': target1,
+            'Target 2': target2,
+            'Target 3': target3,
+            'Stop Loss': stop_loss
+        }
     except Exception as e:
-        print(f"⚠️ Error with {symbol}: {e}")
+        st.warning(f"⚠️ Error with {symbol}: {e}")
         return None
 
-# -------------------------- Main Dashboard --------------------------
-final_data = []
-for symbol in symbols:
-    df = fetch_data(symbol)
-    if df is not None:
-        latest = df.iloc[-1]
-        sentiment = "Bullish" if latest["Bullish"] else "Bearish" if latest["Bearish"] else "Neutral"
-        final_data.append({
-            "Symbol": symbol,
-            "Close": latest["Close"],
-            "EMA20": latest["EMA20"],
-            "EMA50": latest["EMA50"],
-            "RSI": latest["RSI"],
-            "MACD": latest["MACD"],
-            "Signal": latest["Signal"],
-            "MACD_Diff": latest["MACD_Diff"],
-            "Gann Level": latest["Gann_Level"],
-            "Sentiment": sentiment,
-            "Target 1": latest["Target 1"],
-            "Target 2": latest["Target 2"],
-            "Target 3": latest["Target 3"],
-            "Stop Loss": latest["Stop Loss"],
-        })
+def compute_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
 
-if final_data:
-    df_final = pd.DataFrame(final_data)
-    st.dataframe(df_final, use_container_width=True)
+def compute_macd(series):
+    ema12 = series.ewm(span=12, adjust=False).mean()
+    ema26 = series.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, signal
+
+data = []
+for symbol in stock_list:
+    result = fetch_stock_data(symbol)
+    if result:
+        data.append(result)
+
+if data:
+    df = pd.DataFrame(data)
+    df = df.sort_values(by='RSI', ascending=False)
+    st.dataframe(df, use_container_width=True)
 else:
-    st.warning("🚫 No data to display. Check your internet connection or stock symbols.")
+    st.error("🚫 No data to display. Check your internet connection or stock symbols.")
